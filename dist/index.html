@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>AEDノベルゲーム 命をつなぐ選択肢</title>
+  <link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AEDノベルゲーム 命をつなぐ選択肢</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+    #game-container {
+        /* 高さを固定して、内容が画面に収まるように調整 */
+        height: 90vh; 
+    }
+    #text-area {
+      /* テキストエリアの高さを調整して、選択肢エリアのスペースを確保 */
+      max-height: 40%;
+      height: auto;
+    }
+    #choices-area {
+      /* 選択肢エリアのスペースを確保 */
+      flex-grow: 1; 
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+  <div id="game-container" class="bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-3xl flex flex-col items-center">
+    <!-- オープニング画面 -->
+    <div id="start-screen" class="w-full text-center">
+      <h2 class="text-2xl font-bold mb-4">AEDノベルゲーム 命をつなぐ選択肢</h2>
+      <p class="text-lg mb-6">
+        このゲームは、あなたがAEDを使って人命救助を体験するインタラクティブな物語です。<br>
+        あなたの選択が、一人の命を左右します。
+      </p>
+      <button id="start-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-colors duration-300">
+        ゲーム開始
+      </button>
+    </div>
+
+    <!-- 性別選択画面 -->
+    <div id="gender-selection" class="hidden w-full text-center">
+      <h2 class="text-2xl font-bold mb-4">あなたの性別を選んでください</h2>
+      <div class="space-y-4">
+        <button id="male-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-colors duration-300">
+          男性
+        </button>
+        <button id="female-button" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-colors duration-300">
+          女性
+        </button>
+      </div>
+    </div>
+    
+    <!-- ゲーム表示エリア -->
+    <div id="game-play" class="hidden w-full flex flex-col items-center flex-grow">
+      <!-- ゲームテキストエリア -->
+      <div id="text-area" class="bg-gray-700 p-6 rounded-lg mb-4 w-full text-lg leading-relaxed overflow-y-auto">
+        <!-- ゲームのテキストが表示されます -->
+      </div>
+      
+      <!-- キャラクター画像エリア -->
+      <div id="character-image-container" class="mb-4 w-48 h-48 flex items-center justify-center overflow-hidden">
+        <!-- SVGキャラクター画像がここに表示されます -->
+      </div>
+      
+      <!-- 選択肢エリア -->
+      <div id="choices-area" class="w-full space-y-2">
+        <!-- 選択ボタンが表示されます -->
+      </div>
+    </div>
+    
+    <!-- 結果画面 -->
+    <div id="end-screen" class="hidden w-full text-center">
+      <h2 id="end-title" class="text-2xl font-bold mb-4"></h2>
+      <p id="end-message" class="text-lg mb-6"></p>
+      <div id="end-explanation" class="bg-gray-700 p-4 rounded-lg mb-6 text-sm"></div>
+      <button id="restart-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-colors duration-300">
+        最初からやり直す
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const startScreen = document.getElementById('start-screen');
+    const startButton = document.getElementById('start-button');
+    const genderSelection = document.getElementById('gender-selection');
+    const gamePlay = document.getElementById('game-play');
+    const maleButton = document.getElementById('male-button');
+    const femaleButton = document.getElementById('female-button');
+    const endScreen = document.getElementById('end-screen');
+    const endTitle = document.getElementById('end-title');
+    const endMessage = document.getElementById('end-message');
+    const endExplanation = document.getElementById('end-explanation');
+    const restartButton = document.getElementById('restart-button');
+    
+    const textArea = document.getElementById('text-area');
+    const characterImageContainer = document.getElementById('character-image-container');
+    const choicesArea = document.getElementById('choices-area');
+
+    let playerGender = ''; // プレイヤーの性別を格納する変数
+
+    const gameData = {
+      // シーン1：人が倒れている
+      'start': {
+        text: 'あなたは公園を歩いていると、突然、目の前で人が倒れました。',
+        choices: [
+          { text: '近づく', next: 'approachPerson' },
+          { text: '見て見ぬふりをする', next: 'badEnd_ignore' },
+          { text: 'スマホで撮影する', next: 'badEnd_photo' }
+        ],
+        character: 'player'
+      },
+      // シーン2：近づいた
+      'approachPerson': {
+        text: '倒れた人に近づきました。周囲の安全を確認し、肩を叩いて声をかけます。',
+        choices: [
+          { text: 'ただ見下ろす', next: 'badEnd_delay' },
+          { text: '「大丈夫ですか！？」と呼びかける', next: 'checkResponse' }
+        ],
+        character: 'player'
+      },
+      // シーン3：反応の確認
+      'checkResponse': {
+        text: '呼びかけました。反応はありますか？',
+        choices: [
+          { text: '反応がない', next: 'noResponse' },
+          { text: '胸が少し動いたように見える', next: 'checkBreathing_complex' },
+          { text: '反応がある', next: 'goodEnd_safe' }
+        ],
+        character: 'player'
+      },
+      // シーン3.5：呼吸確認（ひっかけポイント）
+      'checkBreathing_complex': {
+        text: '口元を見て、胸の上下を確認します。...数秒間、胸が少し動いたように見えます。これは「普段通りの呼吸」だと判断できますか？',
+        choices: [
+          { text: '呼吸はないと判断する（死戦期呼吸）', next: 'callForHelp' },
+          { text: '「普段通りの呼吸」だと判断する', next: 'normalBreathing' }
+        ],
+        character: 'player'
+      },
+      // シーン4：反応なし
+      'noResponse': {
+        text: '意識がありません！あなたはどうしますか？',
+        choices: [
+          { text: 'その場で叫ぶだけ', next: 'badEnd_timeout' },
+          { text: '119番通報を依頼し、AEDを持ってくるよう頼む', next: 'callForHelp' },
+          { text: '一人で何とかしようとする', next: 'badEnd_delay' }
+        ],
+        character: 'player'
+      },
+      // シーン4.5：普段通りの呼吸があると判断した場合
+      'normalBreathing': {
+        text: 'あなたは「普段通りの呼吸がある」と判断しました。この場合、次にどうしますか？',
+        choices: [
+          { text: 'AEDを使う', next: 'badEnd_aed_wrong' },
+          { text: '回復体位をとらせ、様子を見る', next: 'goodEnd_safe' }
+        ],
+        character: 'player'
+      },
+      // シーン5：応援要請
+      'callForHelp': {
+        text: '「誰か！119番通報とAEDをお願いします！」と大声で叫びました。協力者が通報に走ってくれました。次にするべきことは？',
+        choices: [
+          { text: 'ただ待つ', next: 'badEnd_timeout' },
+          { text: '呼吸を確認する', next: 'checkBreathing' }
+        ],
+        character: 'player'
+      },
+      'checkBreathing': {
+        text: '呼吸を確認すると、ありませんでした。次にすべきことは？',
+        choices: [
+          { text: 'AEDを待つ', next: 'badEnd_delay' },
+          { text: '胸骨圧迫を開始する', next: 'startCpr' }
+        ],
+        character: 'player'
+      },
+      // シーン6：胸骨圧迫
+      'startCpr': {
+        text: '胸骨圧迫を始めました。正しいリズムはどれですか？',
+        choices: [
+          { text: '1分間に100〜120回', next: 'cprContinued' },
+          { text: '1分間に200回以上', next: 'badEnd_cpr_wrong' },
+          { text: '1分間に50回', next: 'badEnd_cpr_wrong' }
+        ],
+        character: 'player'
+      },
+      // シーン7：胸骨圧迫を続ける
+      'cprContinued': {
+        text: '胸骨圧迫を続けていると、協力者がAEDを持ってきてくれました。',
+        choices: [
+          { text: 'AEDの電源を入れる', next: 'aedOn' }
+        ],
+        character: 'aed'
+      },
+      // シーン8：AEDの電源
+      'aedOn': {
+        text: 'AEDの電源を入れると、音声ガイダンスが流れ始めます。パッドを貼り付けてください。',
+        choices: [
+          { text: '右の鎖骨の下と左の脇腹', next: 'aedAnalysis' },
+          { text: '右胸と左胸', next: 'badEnd_aed_pad_wrong' }
+        ],
+        character: 'aed'
+      },
+      // シーン10：AEDの解析
+      'aedAnalysis': {
+        text: 'パッドを正しい位置に貼り付けました。AEDが心電図を解析しています。',
+        choices: [
+          { text: '心配だから手を握る', next: 'badEnd_aed_touch' },
+          { text: 'ショックボタンを押す', next: 'shockNeeded' }
+        ],
+        character: 'aed'
+      },
+      // シーン11：ショック
+      'shockNeeded': {
+        text: 'AEDの指示に従い、ショックボタンを押しました。その後、再び音声ガイダンスが流れます。「直ちに胸骨圧迫を再開してください」',
+        choices: [
+          { text: 'ただちに胸骨圧迫を行う', next: 'cprAfterShock' },
+          { text: 'AEDが電気ショックを流せば胸骨圧迫は行う必要はない', next: 'badEnd_no_cpr_after_shock' }
+        ],
+        character: 'player'
+      },
+      // ショック後の胸骨圧迫
+      'cprAfterShock_interrupt': {
+        text: '胸骨圧迫中に、患者が拒否反応を示したので中断し、もう一度反応と呼吸を確認しました。',
+        choices: [
+          { text: '息を吹き返していたので救急隊が到着するまで回復体位を取り様子を見る', next: 'goodEnd_aed_success_with_recovery' }
+        ],
+        character: 'player'
+      },
+      'cprAfterShock': {
+        text: '胸骨圧迫を続けていると、患者が息を吹き返しました。あなたは次に何をしますか？',
+        choices: [
+          { text: 'AEDのパッドを外す', next: 'badEnd_pad_remove' },
+          { text: '救急隊が到着するまで回復体位を取り様子を見る', next: 'goodEnd_aed' }
+        ],
+        character: 'player'
+      },
+      // --- エンド分岐 ---
+      'goodEnd_safe': {
+        text: 'あなたは『普段通りの呼吸がある』と判断し、患者を回復体位にして救急隊を待ちました。あなたの冷静な判断が命を救いました。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'GOOD END: 観察と判断',
+        explanation: '呼吸が正常にある場合は、胸骨圧迫やAEDは不要です。安全を確保し、回復体位にして救急隊を待つのが正解です。',
+        endButtonText: 'もう一度確認する',
+      },
+      'goodEnd_aed_success_with_recovery': {
+        text: 'あなたの迅速かつ適切な対応により、患者の命が救われました。拒否反応があったため胸骨圧迫を中断し、回復体位を取らせたことで、患者は無事でした。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'GOOD END: 救命成功',
+        explanation: '意識が戻った場合、胸骨圧迫は必要ありません。再度意識と呼吸を確認し、回復体位を取らせて救急隊を待ちましょう。',
+        endButtonText: 'もう一度確認する',
+      },
+      'goodEnd_aed': {
+        text: 'あなたの迅速かつ適切な対応により、患者の命が救われました。AEDと胸骨圧迫を組み合わせたあなたの行動が、この命を繋ぎました。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'GOOD END: 救命成功',
+        explanation: '意識と呼吸がない場合、胸骨圧迫とAEDが救命率を大幅に向上させます。迷わず行動することが重要です。',
+        endButtonText: 'もう一度確認する',
+      },
+      'badEnd_ignore': {
+        text: 'あなたは見て見ぬふりをして立ち去りました。しかし、あなたの心には後悔が残りました。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: 見殺し',
+        explanation: '倒れている人を見かけたら、まず安全を確認し、声をかけることが重要です。無関心は命を奪うことにつながります。'
+      },
+      'badEnd_photo': {
+        text: 'あなたはスマホで撮影を始めました。しかし、人命を救うべき時にこの行動は許されません。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: 無責任な行動',
+        explanation: '人命がかかっている状況では、まず救助活動を優先することが社会的な責任です。撮影は人道に反する行為です。'
+      },
+      'badEnd_delay': {
+        text: 'あなたは正しい行動を取れず、時間だけが過ぎていきました。救命処置が遅れたため、患者の命を救うことができませんでした。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: タイムアウト',
+        explanation: '心停止後、時間経過と共に救命率は急激に低下します。迅速な判断と行動が不可欠です。'
+      },
+      'badEnd_timeout': {
+        text: '「助けて！」と叫び続けるだけでは、具体的な行動には繋がりませんでした。時間が過ぎ、患者の命を救うことができませんでした。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: 行動の欠如',
+        explanation: '応援を求めることは重要ですが、具体的な行動（119番、AEDの依頼）がなければ意味がありません。'
+      },
+      'badEnd_aed_wrong': {
+        text: 'あなたはAEDの電源を入れ、パッドを貼り始めました。しかし、呼吸と脈がある人にAEDを使うことは危険です！命を救うどころか、心停止を引き起こす可能性があります…。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: 不適切なAED使用',
+        explanation: 'AEDは「心停止の可能性がある人」に使うものです。正常呼吸があれば、観察と救急要請が最優先です。'
+      },
+      'badEnd_cpr_wrong': {
+        text: 'あなたは不適切なリズムで胸骨圧迫を行ってしまいました。正しい胸骨圧迫は、1分間に100〜120回のリズムで、胸が約5cm沈むまで強く、速く押すことです。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: 不適切な胸骨圧迫',
+        explanation: '胸骨圧迫は正確なリズムと強さで行うことが重要です。不適切な圧迫は効果が薄く、救命につながりません。'
+      },
+      'badEnd_aed_pad_wrong': {
+        text: 'あなたはAEDのパッドを不適切な位置に貼ってしまいました。正しい位置に貼らないと、心臓に電気ショックが届きません。',
+        choices: [],
+        character: 'aed',
+        isEnd: true,
+        title: 'BAD END: 不適切なパッドの貼り付け',
+        explanation: 'AEDのパッドは、心臓を挟むように右鎖骨の下と左の脇腹に貼るのが正しい位置です。'
+      },
+      'badEnd_aed_touch': {
+        text: 'あなたはショック時に患者の体に触れてしまいました。これにより、あなた自身も感電する危険があり、ショックの効果も得られませんでした。',
+        choices: [],
+        character: 'aed',
+        isEnd: true,
+        title: 'BAD END: ショック時の接触',
+        explanation: 'AEDのショックを行う際は、周囲の人を含め、誰も患者に触れていないことを確認する必要があります。'
+      },
+      'badEnd_pad_remove': {
+        text: 'あなたはAEDのパッドを外してしまいました。しかし、AEDはパッドが貼られた状態でなければ、再び心電図を解析することができません。再び心停止を起こした際に、すぐに対応できなくなってしまいました。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: パッドの早期取り外し',
+        explanation: 'AEDのパッドは救急隊に引き継ぐまで絶対に外してはいけません。再び心停止を起こす可能性に備えるためです。'
+      },
+      'badEnd_no_cpr_after_shock': {
+        text: 'あなたはAEDが電気ショックを流せば、胸骨圧迫は不要だと判断し、何もしませんでした。しかし、心臓のリズムは再び崩れる可能性があります。救命処置を中断したため、患者の命を救うことができませんでした。',
+        choices: [],
+        character: 'player',
+        isEnd: true,
+        title: 'BAD END: 処置の中断',
+        explanation: 'AEDのショック後も、AEDから「胸骨圧迫を再開してください」と音声ガイダンスが流れる場合は、指示に従って胸骨圧迫を継続する必要があります。'
+      }
+    };
+
+    const characterImages = {
+      // ユーザーが提供したデザインに基づいて男性キャラクターのSVGを修正
+      player_male: `
+      <svg width="192" height="192" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="7" r="4" fill="#60A5FA"/>
+        <path d="M8 14h8l-4 5z" fill="#60A5FA"/>
+      </svg>
+      `,
+      // ユーザーが提供したデザインに基づいて女性キャラクターのSVGを修正
+      player_female: `
+        <svg width="192" height="192" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="7" r="4" fill="#F472B6"/>
+            <path d="M8 19h8l-4-5z" fill="#F472B6"/>
+        </svg>
+      `,
+      aed: `` // AEDのキャラクターには画像を表示しない
+    };
+    
+    // 選択肢をシャッフルする関数
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    function showStartScreen() {
+      startScreen.classList.remove('hidden');
+      genderSelection.classList.add('hidden');
+      gamePlay.classList.add('hidden');
+      endScreen.classList.add('hidden');
+    }
+
+    function showGenderSelection() {
+      startScreen.classList.add('hidden');
+      genderSelection.classList.remove('hidden');
+      gamePlay.classList.add('hidden');
+      endScreen.classList.add('hidden');
+    }
+
+    function startGame() {
+      genderSelection.classList.add('hidden');
+      gamePlay.classList.remove('hidden');
+      endScreen.classList.add('hidden');
+      showScene('start');
+    }
+
+    function showEndScreen(title, message, explanation, endButtonText = '最初からやり直す') {
+      gamePlay.classList.add('hidden');
+      endScreen.classList.remove('hidden');
+      endTitle.textContent = title;
+      endMessage.textContent = message;
+      endExplanation.textContent = `【解説】\n${explanation}`;
+      // endButtonText が指定されていればそのテキストを使用
+      restartButton.textContent = endButtonText;
+    }
+
+    function showScene(sceneId) {
+      const scene = gameData[sceneId];
+      if (!scene) {
+        console.error('Scene not found:', sceneId);
+        return;
+      }
+      
+      if (scene.isEnd) {
+        showEndScreen(scene.title, scene.text, scene.explanation, scene.endButtonText);
+        return;
+      }
+
+      textArea.textContent = scene.text;
+      
+      // キャラクター画像をSVGで更新
+      if (scene.character === 'player') {
+        if (playerGender === 'male') {
+            characterImageContainer.innerHTML = characterImages.player_male;
+        } else if (playerGender === 'female') {
+            characterImageContainer.innerHTML = characterImages.player_female;
+        }
+      } else if (scene.character && characterImages[scene.character]) {
+        characterImageContainer.innerHTML = characterImages[scene.character];
+      } else {
+        // プレイヤー以外のキャラクターの場合、画像を非表示にする
+        characterImageContainer.innerHTML = '';
+      }
+
+      // 選択肢をクリア
+      choicesArea.innerHTML = '';
+
+      // 選択肢をシャッフル
+      const shuffledChoices = shuffleArray([...scene.choices]);
+
+      // 新しい選択肢を追加
+      shuffledChoices.forEach(choice => {
+        const button = document.createElement('button');
+        button.textContent = choice.text;
+        button.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-colors duration-300';
+        button.addEventListener('click', () => {
+          showScene(choice.next);
+        });
+        choicesArea.appendChild(button);
+      });
+    }
+
+    // イベントリスナー
+    startButton.addEventListener('click', showGenderSelection);
+
+    maleButton.addEventListener('click', () => {
+      playerGender = 'male';
+      startGame();
+    });
+
+    femaleButton.addEventListener('click', () => {
+      playerGender = 'female';
+      startGame();
+    });
+
+    restartButton.addEventListener('click', showStartScreen);
+
+    // ページ読み込み時にオープニング画面を表示
+    document.addEventListener('DOMContentLoaded', showStartScreen);
+  </script>
+</body>
+</html>
+<!-- partial -->
+  <script  src="./script.js"></script>
+
+</body>
+</html>
